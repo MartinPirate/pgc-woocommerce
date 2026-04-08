@@ -95,6 +95,29 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         return $orderId;
     }
 
+    public function createOrderTransactionId($orderId)
+    {
+        return $this->encodeOrderId($orderId);
+    }
+
+    public function getGatewayCallbackUrl()
+    {
+        return $this->callbackUrl;
+    }
+
+    public function getPaymentSuccessUrl($order)
+    {
+        return $this->paymentSuccessUrl($order);
+    }
+
+    public function getPaymentErrorUrl($order)
+    {
+        return add_query_arg(
+            ['gateway_return_result' => 'error'],
+            $this->get_option('integrationKey') ? $order->get_checkout_payment_url(false) : wc_get_checkout_url()
+        );
+    }
+
     public function process_payment($orderId)
     {
         global $woocommerce;
@@ -113,34 +136,12 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
 
         $customer = WC_PaymentGatewayCloud_CustomerBuilder::fromOrder($this->order);
 
-        /**
-         * transaction
-         */
-        $transactionRequest = $this->get_option('transactionRequest');
-        $transaction = null;
-        switch ($transactionRequest) {
-            case 'preauthorize':
-                $transaction = new \PaymentGatewayCloud\Client\Transaction\Preauthorize();
-                break;
-            case 'debit':
-            default:
-                $transaction = new \PaymentGatewayCloud\Client\Transaction\Debit();
-                break;
-        }
-
-        $orderTxId = $this->encodeOrderId($orderId);
-        // keep track of last tx id 
-        $this->order->add_meta_data('orderTxId', $orderTxId, true); 
-        $this->order->save_meta_data();
-        $transaction->setTransactionId($orderTxId)
-            ->setAmount(floatval($this->order->get_total()))
-            ->setCurrency($this->order->get_currency())
-            ->setCustomer($customer)
-            ->setExtraData($this->extraData3DS())
-            ->setCallbackUrl($this->callbackUrl)
-            ->setCancelUrl(wc_get_checkout_url())
-            ->setSuccessUrl($this->paymentSuccessUrl($this->order))
-            ->setErrorUrl(add_query_arg(['gateway_return_result' => 'error'], $this->get_option('integrationKey') ? $this->order->get_checkout_payment_url(false) : wc_get_checkout_url()));
+        $transaction = WC_PaymentGatewayCloud_TransactionFactory::make(
+            $this,
+            $this->order,
+            $customer,
+            $this->extraData3DS()
+        );
         
         /**
          * integration key is set -> seamless
@@ -160,15 +161,7 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         /**
          * transaction
          */
-        switch ($transactionRequest) {
-            case 'preauthorize':
-                $result = $client->preauthorize($transaction);
-                break;
-            case 'debit':
-            default:
-                $result = $client->debit($transaction);
-                break;
-        }
+        $result = WC_PaymentGatewayCloud_TransactionFactory::execute($this, $client, $transaction);
 
         if ($result->isSuccess()) {
             // $gatewayReferenceId = $result->getReferenceId();
@@ -242,28 +235,7 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
             die("OK");
         }
         
-        if ($callbackResult->getResult() == \PaymentGatewayCloud\Client\Callback\Result::RESULT_OK) {
-            switch ($callbackResult->getTransactionType()) {
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_DEBIT:
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_CAPTURE:
-                    $this->order->payment_complete();
-                    break;
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_VOID:
-                    $this->order->update_status('cancelled', __('Void', 'woocommerce'));
-                    break;
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_PREAUTHORIZE:
-                    $this->order->update_status('on-hold', __('Awaiting capture/void', 'woocommerce'));
-                    break;
-            }
-        } elseif ($callbackResult->getResult() == \PaymentGatewayCloud\Client\Callback\Result::RESULT_ERROR) {
-            switch ($callbackResult->getTransactionType()) {
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_DEBIT:
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_CAPTURE:
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_VOID:
-                    $this->order->update_status('failed', __('Error', 'woocommerce'));
-                    break;
-            }
-        }
+        WC_PaymentGatewayCloud_CallbackHandler::process($this->order, $callbackResult);
 
         die("OK");
     }

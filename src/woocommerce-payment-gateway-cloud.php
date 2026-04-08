@@ -83,6 +83,8 @@ final class WC_PaymentGatewayCloud_Bootstrap
     {
         require_once PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEDIR . 'classes/includes/payment-gateway-cloud-provider.php';
         require_once PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEDIR . 'classes/includes/payment-gateway-cloud-client-factory.php';
+        require_once PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEDIR . 'classes/includes/payment-gateway-cloud-transaction-factory.php';
+        require_once PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEDIR . 'classes/includes/payment-gateway-cloud-callback-handler.php';
         require_once PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEDIR . 'classes/includes/payment-gateway-cloud-customer-builder.php';
         require_once PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEDIR . 'classes/includes/payment-gateway-cloud-creditcard.php';
         require_once PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEDIR . 'classes/includes/payment-gateway-cloud-creditcard-amex.php';
