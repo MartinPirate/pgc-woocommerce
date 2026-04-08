@@ -39,9 +39,12 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
         add_action('wp_enqueue_scripts', function () {
             wp_register_script('payment_js', $this->get_option('apiHost') . 'js/integrated/payment.min.js', [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION, false);
-            wp_register_script('payment_gateway_cloud_js_' . $this->id, plugins_url('/paymentgatewaycloud/assets/js/payment-gateway-cloud.js'), [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION, false);
+            wp_register_script('payment_gateway_cloud_js_' . $this->id, PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEURL . 'assets/js/payment-gateway-cloud.js', [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION, false);
+            wp_register_style('payment_gateway_cloud_receipt', PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEURL . 'assets/css/payment-gateway-cloud-receipt.css', [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION);
         }, 999);
         add_action('woocommerce_api_wc_' . $this->id, [$this, 'process_callback']);
+        add_action('woocommerce_thankyou_' . $this->id, [$this, 'render_receipt'], 20, 1);
+        add_action('woocommerce_email_after_order_table', [$this, 'render_email_receipt'], 20, 4);
         add_filter('script_loader_tag', function ($tag, $handle) {
             if ($handle !== 'payment_js') {
                 return $tag;
@@ -95,6 +98,29 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         return $orderId;
     }
 
+    public function createOrderTransactionId($orderId)
+    {
+        return $this->encodeOrderId($orderId);
+    }
+
+    public function getGatewayCallbackUrl()
+    {
+        return $this->callbackUrl;
+    }
+
+    public function getPaymentSuccessUrl($order)
+    {
+        return $this->paymentSuccessUrl($order);
+    }
+
+    public function getPaymentErrorUrl($order)
+    {
+        return add_query_arg(
+            ['gateway_return_result' => 'error'],
+            $this->get_option('integrationKey') ? $order->get_checkout_payment_url(false) : wc_get_checkout_url()
+        );
+    }
+
     public function process_payment($orderId)
     {
         global $woocommerce;
@@ -109,77 +135,16 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         /**
          * gateway client
          */
-        WC_PaymentGatewayCloud_Provider::autoloadClient();
-        PaymentGatewayCloud\Client\Client::setApiUrl($this->get_option('apiHost'));
-        $client = new PaymentGatewayCloud\Client\Client(
-            $this->get_option('apiUser'),
-            htmlspecialchars_decode($this->get_option('apiPassword')),
-            $this->get_option('apiKey'),
-            $this->get_option('sharedSecret')
+        $client = WC_PaymentGatewayCloud_ClientFactory::make($this);
+
+        $customer = WC_PaymentGatewayCloud_CustomerBuilder::fromOrder($this->order);
+
+        $transaction = WC_PaymentGatewayCloud_TransactionFactory::make(
+            $this,
+            $this->order,
+            $customer,
+            $this->extraData3DS()
         );
-
-        /**
-         * gateway customer
-         */
-        $customer = new PaymentGatewayCloud\Client\Data\Customer();
-        $customer
-            ->setBillingAddress1($this->order->get_billing_address_1())
-            ->setBillingAddress2($this->order->get_billing_address_2())
-            ->setBillingCity($this->order->get_billing_city())
-            ->setBillingCountry($this->order->get_billing_country())
-            ->setBillingPhone($this->order->get_billing_phone())
-            ->setBillingPostcode($this->order->get_billing_postcode())
-            ->setBillingState($this->order->get_billing_state())
-            ->setCompany($this->order->get_billing_company())
-            ->setEmail($this->order->get_billing_email())
-            ->setFirstName($this->order->get_billing_first_name())
-            ->setIpAddress(WC_Geolocation::get_ip_address()) // $this->order->get_customer_ip_address()
-            ->setLastName($this->order->get_billing_last_name());
-
-        /**
-         * add shipping data for non-digital goods
-         */
-        if ($this->order->get_shipping_country()) {
-            $customer
-                ->setShippingAddress1($this->order->get_shipping_address_1())
-                ->setShippingAddress2($this->order->get_shipping_address_2())
-                ->setShippingCity($this->order->get_shipping_city())
-                ->setShippingCompany($this->order->get_shipping_company())
-                ->setShippingCountry($this->order->get_shipping_country())
-                ->setShippingFirstName($this->order->get_shipping_first_name())
-                ->setShippingLastName($this->order->get_shipping_last_name())
-                ->setShippingPostcode($this->order->get_shipping_postcode())
-                ->setShippingState($this->order->get_shipping_state());
-        }
-
-        /**
-         * transaction
-         */
-        $transactionRequest = $this->get_option('transactionRequest');
-        $transaction = null;
-        switch ($transactionRequest) {
-            case 'preauthorize':
-                $transaction = new \PaymentGatewayCloud\Client\Transaction\Preauthorize();
-                break;
-            case 'debit':
-            default:
-                $transaction = new \PaymentGatewayCloud\Client\Transaction\Debit();
-                break;
-        }
-
-        $orderTxId = $this->encodeOrderId($orderId);
-        // keep track of last tx id 
-        $this->order->add_meta_data('orderTxId', $orderTxId, true); 
-        $this->order->save_meta_data();
-        $transaction->setTransactionId($orderTxId)
-            ->setAmount(floatval($this->order->get_total()))
-            ->setCurrency($this->order->get_currency())
-            ->setCustomer($customer)
-            ->setExtraData($this->extraData3DS())
-            ->setCallbackUrl($this->callbackUrl)
-            ->setCancelUrl(wc_get_checkout_url())
-            ->setSuccessUrl($this->paymentSuccessUrl($this->order))
-            ->setErrorUrl(add_query_arg(['gateway_return_result' => 'error'], $this->get_option('integrationKey') ? $this->order->get_checkout_payment_url(false) : wc_get_checkout_url()));
         
         /**
          * integration key is set -> seamless
@@ -199,18 +164,12 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         /**
          * transaction
          */
-        switch ($transactionRequest) {
-            case 'preauthorize':
-                $result = $client->preauthorize($transaction);
-                break;
-            case 'debit':
-            default:
-                $result = $client->debit($transaction);
-                break;
-        }
+        $result = WC_PaymentGatewayCloud_TransactionFactory::execute($this, $client, $transaction);
 
         if ($result->isSuccess()) {
-            // $gatewayReferenceId = $result->getReferenceId();
+            $this->order->update_meta_data('gatewayReferenceId', $result->getReferenceId());
+            $this->order->update_meta_data('gatewayPaymentMethodTitle', $this->get_title());
+            $this->order->save_meta_data();
             if ($result->getReturnType() == PaymentGatewayCloud\Client\Transaction\Result::RETURN_TYPE_ERROR) {
                 // $errors = $result->getErrors();
                 return $this->paymentFailedResponse();
@@ -249,7 +208,7 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
     {
         $url = $this->get_return_url($order);
 
-        return $url . '&empty-cart';
+        return add_query_arg('clear-cart', '1', $url);
     }
 
     private function paymentFailedResponse()
@@ -264,15 +223,7 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
 
     public function process_callback()
     {
-        WC_PaymentGatewayCloud_Provider::autoloadClient();
-
-        PaymentGatewayCloud\Client\Client::setApiUrl($this->get_option('apiHost'));
-        $client = new PaymentGatewayCloud\Client\Client(
-            $this->get_option('apiUser'),
-            htmlspecialchars_decode($this->get_option('apiPassword')),
-            $this->get_option('apiKey'),
-            $this->get_option('sharedSecret')
-        );
+        $client = WC_PaymentGatewayCloud_ClientFactory::make($this);
 
         if (!$client->validateCallbackWithGlobals()) {
             if (!headers_sent()) {
@@ -289,30 +240,35 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
             die("OK");
         }
         
-        if ($callbackResult->getResult() == \PaymentGatewayCloud\Client\Callback\Result::RESULT_OK) {
-            switch ($callbackResult->getTransactionType()) {
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_DEBIT:
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_CAPTURE:
-                    $this->order->payment_complete();
-                    break;
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_VOID:
-                    $this->order->update_status('cancelled', __('Void', 'woocommerce'));
-                    break;
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_PREAUTHORIZE:
-                    $this->order->update_status('on-hold', __('Awaiting capture/void', 'woocommerce'));
-                    break;
-            }
-        } elseif ($callbackResult->getResult() == \PaymentGatewayCloud\Client\Callback\Result::RESULT_ERROR) {
-            switch ($callbackResult->getTransactionType()) {
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_DEBIT:
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_CAPTURE:
-                case \PaymentGatewayCloud\Client\Callback\Result::TYPE_VOID:
-                    $this->order->update_status('failed', __('Error', 'woocommerce'));
-                    break;
-            }
-        }
+        WC_PaymentGatewayCloud_CallbackHandler::process($this->order, $callbackResult);
+        $this->order->update_meta_data('gatewayReferenceId', $callbackResult->getReferenceId());
+        $this->order->save_meta_data();
 
         die("OK");
+    }
+
+    public function render_receipt($orderId)
+    {
+        $order = wc_get_order($orderId);
+
+        if (!$order || $order->get_payment_method() !== $this->id) {
+            return;
+        }
+
+        WC_PaymentGatewayCloud_ReceiptRenderer::render($order, $this);
+    }
+
+    public function render_email_receipt($order, $sentToAdmin, $plainText, $email)
+    {
+        if ($plainText || $sentToAdmin || !$order instanceof WC_Order) {
+            return;
+        }
+
+        if ($order->get_payment_method() !== $this->id || $this->get_option('receiptEmailEnabled') !== 'yes') {
+            return;
+        }
+
+        echo WC_PaymentGatewayCloud_ReceiptRenderer::renderEmail($order, $this);
     }
 
     public function init_form_fields()
@@ -377,6 +333,45 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
                     'debit' => 'Debit',
                     'preauthorize' => 'Preauthorize/Capture/Void',
                 ],
+            ],
+            'receiptTemplate' => [
+                'title' => 'Receipt Template',
+                'type' => 'select',
+                'label' => 'Receipt Template',
+                'description' => 'Controls the styled IXOPAY receipt block shown on the WooCommerce order received page.',
+                'default' => 'classic',
+                'options' => [
+                    'classic' => 'Classic',
+                    'summary' => 'Summary',
+                    'ops' => 'Operations',
+                ],
+            ],
+            'receiptEmailEnabled' => [
+                'title' => 'Email Receipt Block',
+                'type' => 'checkbox',
+                'label' => 'Render the IXOPAY receipt block in customer order emails',
+                'default' => 'yes',
+            ],
+            'receiptBrandName' => [
+                'title' => 'Receipt Brand Name',
+                'type' => 'text',
+                'label' => 'Receipt Brand Name',
+                'description' => 'Shown in the receipt header and email receipt block.',
+                'default' => PAYMENT_GATEWAY_CLOUD_EXTENSION_NAME,
+            ],
+            'receiptSupportEmail' => [
+                'title' => 'Receipt Support Email',
+                'type' => 'text',
+                'label' => 'Receipt Support Email',
+                'description' => 'Optional support contact shown on receipt templates.',
+                'default' => '',
+            ],
+            'receiptAccentColor' => [
+                'title' => 'Receipt Accent Color',
+                'type' => 'text',
+                'label' => 'Receipt Accent Color',
+                'description' => 'Hex color for receipt accents, for example #c7ff52.',
+                'default' => '#c7ff52',
             ],
         ];
     }

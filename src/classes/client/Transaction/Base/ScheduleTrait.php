@@ -28,7 +28,7 @@ trait ScheduleTrait {
      *
      * @return $this
      */
-    public function setSchedule(ScheduleData $schedule = null) {
+    public function setSchedule(?ScheduleData $schedule = null) {
         $this->schedule = $schedule;
 
         return $this;

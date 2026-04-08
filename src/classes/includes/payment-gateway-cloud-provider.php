@@ -4,10 +4,7 @@ final class WC_PaymentGatewayCloud_Provider
 {
     public static function paymentMethods()
     {
-        /**
-         * Comment/disable adapters that are not applicable
-         */
-        return [
+        $paymentMethods = [
             'WC_PaymentGatewayCloud_CreditCard',
             'WC_PaymentGatewayCloud_CreditCard_Amex',
             'WC_PaymentGatewayCloud_CreditCard_Diners',
@@ -18,6 +15,8 @@ final class WC_PaymentGatewayCloud_Provider
             'WC_PaymentGatewayCloud_CreditCard_UnionPay',
             'WC_PaymentGatewayCloud_CreditCard_Visa',
         ];
+
+        return apply_filters('payment_gateway_cloud_payment_methods', $paymentMethods);
     }
 
     public static function autoloadClient()

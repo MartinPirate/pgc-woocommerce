@@ -7,6 +7,7 @@ Requires PHP: 7.1
 Stable tag: X.Y.Z
 WC requires at least: 3.6.0
 WC tested up to: 3.7.0
+Text Domain: woocommerce-payment-gateway-cloud
 
 Payment Gateway Cloud WooCommerce Extension
 
