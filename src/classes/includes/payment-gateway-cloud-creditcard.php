@@ -39,7 +39,7 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
         add_action('wp_enqueue_scripts', function () {
             wp_register_script('payment_js', $this->get_option('apiHost') . 'js/integrated/payment.min.js', [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION, false);
-            wp_register_script('payment_gateway_cloud_js_' . $this->id, plugins_url('/paymentgatewaycloud/assets/js/payment-gateway-cloud.js'), [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION, false);
+            wp_register_script('payment_gateway_cloud_js_' . $this->id, PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEURL . 'assets/js/payment-gateway-cloud.js', [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION, false);
         }, 999);
         add_action('woocommerce_api_wc_' . $this->id, [$this, 'process_callback']);
         add_filter('script_loader_tag', function ($tag, $handle) {
@@ -109,48 +109,9 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         /**
          * gateway client
          */
-        WC_PaymentGatewayCloud_Provider::autoloadClient();
-        PaymentGatewayCloud\Client\Client::setApiUrl($this->get_option('apiHost'));
-        $client = new PaymentGatewayCloud\Client\Client(
-            $this->get_option('apiUser'),
-            htmlspecialchars_decode($this->get_option('apiPassword')),
-            $this->get_option('apiKey'),
-            $this->get_option('sharedSecret')
-        );
+        $client = WC_PaymentGatewayCloud_ClientFactory::make($this);
 
-        /**
-         * gateway customer
-         */
-        $customer = new PaymentGatewayCloud\Client\Data\Customer();
-        $customer
-            ->setBillingAddress1($this->order->get_billing_address_1())
-            ->setBillingAddress2($this->order->get_billing_address_2())
-            ->setBillingCity($this->order->get_billing_city())
-            ->setBillingCountry($this->order->get_billing_country())
-            ->setBillingPhone($this->order->get_billing_phone())
-            ->setBillingPostcode($this->order->get_billing_postcode())
-            ->setBillingState($this->order->get_billing_state())
-            ->setCompany($this->order->get_billing_company())
-            ->setEmail($this->order->get_billing_email())
-            ->setFirstName($this->order->get_billing_first_name())
-            ->setIpAddress(WC_Geolocation::get_ip_address()) // $this->order->get_customer_ip_address()
-            ->setLastName($this->order->get_billing_last_name());
-
-        /**
-         * add shipping data for non-digital goods
-         */
-        if ($this->order->get_shipping_country()) {
-            $customer
-                ->setShippingAddress1($this->order->get_shipping_address_1())
-                ->setShippingAddress2($this->order->get_shipping_address_2())
-                ->setShippingCity($this->order->get_shipping_city())
-                ->setShippingCompany($this->order->get_shipping_company())
-                ->setShippingCountry($this->order->get_shipping_country())
-                ->setShippingFirstName($this->order->get_shipping_first_name())
-                ->setShippingLastName($this->order->get_shipping_last_name())
-                ->setShippingPostcode($this->order->get_shipping_postcode())
-                ->setShippingState($this->order->get_shipping_state());
-        }
+        $customer = WC_PaymentGatewayCloud_CustomerBuilder::fromOrder($this->order);
 
         /**
          * transaction
@@ -249,7 +210,7 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
     {
         $url = $this->get_return_url($order);
 
-        return $url . '&empty-cart';
+        return add_query_arg('clear-cart', '1', $url);
     }
 
     private function paymentFailedResponse()
@@ -264,15 +225,7 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
 
     public function process_callback()
     {
-        WC_PaymentGatewayCloud_Provider::autoloadClient();
-
-        PaymentGatewayCloud\Client\Client::setApiUrl($this->get_option('apiHost'));
-        $client = new PaymentGatewayCloud\Client\Client(
-            $this->get_option('apiUser'),
-            htmlspecialchars_decode($this->get_option('apiPassword')),
-            $this->get_option('apiKey'),
-            $this->get_option('sharedSecret')
-        );
+        $client = WC_PaymentGatewayCloud_ClientFactory::make($this);
 
         if (!$client->validateCallbackWithGlobals()) {
             if (!headers_sent()) {
