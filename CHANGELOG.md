@@ -1,6 +1,19 @@
 # Release Notes
 
 ## Unreleased
+### Added
+- Repository-level PHPUnit workflow for the extracted WooCommerce integration helpers
+- Unit coverage for customer mapping, transaction construction, and callback status handling
+
+### Changed
+- Modernized plugin bootstrap and added a WooCommerce dependency guard
+- Extracted client creation, customer mapping, transaction setup, and callback handling into dedicated helpers
+- Made payment method registration filterable for easier extension
+
+### Fixed
+- Corrected the success redirect cart-clearing parameter
+- Removed PHP 8.5 deprecations in schedule transaction types
+
 ## v1.7.4 (2020-07-29)
 ### Fixed
 - Payment detail validation for seamless flow 
