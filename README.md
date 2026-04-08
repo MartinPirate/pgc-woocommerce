@@ -23,6 +23,19 @@ php build.php gateway.mypaymentprovider.com "My Payment Provider"
 
 We supply ready to use Docker environments for development & testing. Please take a look at the supplied [docker](docker) directory for instructions.
 
+## Local Testing
+
+- Install the repo-level development dependencies:
+```shell
+composer install
+```
+- Run the unit tests for the extracted WooCommerce integration helpers:
+```shell
+composer phpunit
+```
+
+These tests intentionally live at the repository root so the distributable WordPress plugin package under [`src`](src) remains unchanged.
+
 ## Provide Updates
 
 - Fetch the updated source from this repository (see [CHANGELOG](CHANGELOG.md)).<br>Note: make sure to not overwrite any previous changes you've made for the previous version, or re-apply these changes.

@@ -1,0 +1,22 @@
+{
+  "name": "martinpirate/pgc-woocommerce-dev",
+  "description": "Development tooling for the IXOPAY WooCommerce plugin fork",
+  "type": "project",
+  "require-dev": {
+    "phpunit/phpunit": "^12.1",
+    "psr/log": "^1.1 || ^2.0 || ^3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "PaymentGatewayCloud\\Client\\": "src/classes/client/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "PgcWooCommerce\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "phpunit": "phpunit --configuration phpunit.xml"
+  }
+}
