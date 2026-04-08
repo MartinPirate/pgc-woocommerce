@@ -40,8 +40,10 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         add_action('wp_enqueue_scripts', function () {
             wp_register_script('payment_js', $this->get_option('apiHost') . 'js/integrated/payment.min.js', [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION, false);
             wp_register_script('payment_gateway_cloud_js_' . $this->id, PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEURL . 'assets/js/payment-gateway-cloud.js', [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION, false);
+            wp_register_style('payment_gateway_cloud_receipt', PAYMENT_GATEWAY_CLOUD_EXTENSION_BASEURL . 'assets/css/payment-gateway-cloud-receipt.css', [], PAYMENT_GATEWAY_CLOUD_EXTENSION_VERSION);
         }, 999);
         add_action('woocommerce_api_wc_' . $this->id, [$this, 'process_callback']);
+        add_action('woocommerce_thankyou_' . $this->id, [$this, 'render_receipt'], 20, 1);
         add_filter('script_loader_tag', function ($tag, $handle) {
             if ($handle !== 'payment_js') {
                 return $tag;
@@ -164,7 +166,9 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         $result = WC_PaymentGatewayCloud_TransactionFactory::execute($this, $client, $transaction);
 
         if ($result->isSuccess()) {
-            // $gatewayReferenceId = $result->getReferenceId();
+            $this->order->update_meta_data('gatewayReferenceId', $result->getReferenceId());
+            $this->order->update_meta_data('gatewayPaymentMethodTitle', $this->get_title());
+            $this->order->save_meta_data();
             if ($result->getReturnType() == PaymentGatewayCloud\Client\Transaction\Result::RETURN_TYPE_ERROR) {
                 // $errors = $result->getErrors();
                 return $this->paymentFailedResponse();
@@ -236,8 +240,21 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         }
         
         WC_PaymentGatewayCloud_CallbackHandler::process($this->order, $callbackResult);
+        $this->order->update_meta_data('gatewayReferenceId', $callbackResult->getReferenceId());
+        $this->order->save_meta_data();
 
         die("OK");
+    }
+
+    public function render_receipt($orderId)
+    {
+        $order = wc_get_order($orderId);
+
+        if (!$order || $order->get_payment_method() !== $this->id) {
+            return;
+        }
+
+        WC_PaymentGatewayCloud_ReceiptRenderer::render($order, $this);
     }
 
     public function init_form_fields()
@@ -301,6 +318,18 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
                 'options' => [
                     'debit' => 'Debit',
                     'preauthorize' => 'Preauthorize/Capture/Void',
+                ],
+            ],
+            'receiptTemplate' => [
+                'title' => 'Receipt Template',
+                'type' => 'select',
+                'label' => 'Receipt Template',
+                'description' => 'Controls the styled IXOPAY receipt block shown on the WooCommerce order received page.',
+                'default' => 'classic',
+                'options' => [
+                    'classic' => 'Classic',
+                    'summary' => 'Summary',
+                    'ops' => 'Operations',
                 ],
             ],
         ];

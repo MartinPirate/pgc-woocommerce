@@ -1,0 +1,146 @@
+.payment-gateway-cloud-receipt {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    border-radius: 24px;
+    border: 1px solid rgba(12, 21, 37, 0.12);
+    background:
+        radial-gradient(circle at top right, rgba(35, 197, 94, 0.12), transparent 30%),
+        linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%);
+    box-shadow: 0 18px 40px rgba(12, 21, 37, 0.08);
+    color: #0f172a;
+}
+
+.payment-gateway-cloud-receipt--summary {
+    background:
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 30%),
+        linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%);
+}
+
+.payment-gateway-cloud-receipt--ops {
+    background:
+        radial-gradient(circle at top right, rgba(6, 182, 212, 0.14), transparent 30%),
+        linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%);
+}
+
+.payment-gateway-cloud-receipt--rose {
+    background:
+        radial-gradient(circle at top right, rgba(244, 63, 94, 0.15), transparent 32%),
+        linear-gradient(180deg, #ffffff 0%, #fff6f7 100%);
+}
+
+.payment-gateway-cloud-receipt__hero,
+.payment-gateway-cloud-receipt__amount-row,
+.payment-gateway-cloud-receipt__ops-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.payment-gateway-cloud-receipt__eyebrow {
+    margin: 0 0 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.payment-gateway-cloud-receipt h2,
+.payment-gateway-cloud-receipt h3 {
+    margin: 0;
+    line-height: 1.1;
+}
+
+.payment-gateway-cloud-receipt__status,
+.payment-gateway-cloud-receipt__ops-flag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.payment-gateway-cloud-receipt__amount-row {
+    margin: 1.25rem 0;
+    padding: 1rem 1.1rem;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.04);
+}
+
+.payment-gateway-cloud-receipt__amount-row strong {
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.payment-gateway-cloud-receipt__amount-row span {
+    color: #475569;
+}
+
+.payment-gateway-cloud-receipt__meta-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.payment-gateway-cloud-receipt__meta-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 0;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.payment-gateway-cloud-receipt__meta-list li:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.payment-gateway-cloud-receipt__meta-list span {
+    color: #475569;
+}
+
+.payment-gateway-cloud-receipt__summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.payment-gateway-cloud-receipt__tile {
+    padding: 1rem;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.payment-gateway-cloud-receipt__tile p {
+    margin: 0 0 0.45rem;
+    color: #64748b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.payment-gateway-cloud-receipt__tile strong {
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+    .payment-gateway-cloud-receipt {
+        padding: 1.15rem;
+    }
+
+    .payment-gateway-cloud-receipt__hero,
+    .payment-gateway-cloud-receipt__amount-row,
+    .payment-gateway-cloud-receipt__ops-header,
+    .payment-gateway-cloud-receipt__meta-list li {
+        flex-direction: column;
+    }
+
+    .payment-gateway-cloud-receipt__summary-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -4,6 +4,7 @@
 ### Added
 - Repository-level PHPUnit workflow for the extracted WooCommerce integration helpers
 - Unit coverage for customer mapping, transaction construction, and callback status handling
+- Selectable IXOPAY receipt templates on the WooCommerce order-received page
 
 ### Changed
 - Modernized plugin bootstrap and added a WooCommerce dependency guard
