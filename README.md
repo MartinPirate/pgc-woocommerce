@@ -41,7 +41,22 @@ These tests intentionally live at the repository root so the distributable WordP
 - extracted gateway client, customer, transaction, and callback concerns into dedicated helpers
 - added a repo-level PHPUnit workflow for the extracted integration helpers
 - added selectable IXOPAY receipt templates on the WooCommerce order-received page
+- added branded email receipt rendering for customer order emails
+- added admin-configurable receipt branding fields for brand name, support email, and accent color
 - fixed the cart-clearing success redirect flow
+
+## Receipt Template Preview
+
+Preview source:
+- [`docs/receipt-preview.html`](docs/receipt-preview.html)
+
+Desktop:
+
+![Receipt preview desktop](docs/screenshots/receipt-preview-desktop.png)
+
+Mobile:
+
+![Receipt preview mobile](docs/screenshots/receipt-preview-mobile.png)
 
 ## Provide Updates
 

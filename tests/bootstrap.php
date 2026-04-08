@@ -2,10 +2,75 @@
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+if (!defined('PAYMENT_GATEWAY_CLOUD_EXTENSION_NAME')) {
+    define('PAYMENT_GATEWAY_CLOUD_EXTENSION_NAME', 'Payment Gateway Cloud');
+}
+
 if (!function_exists('__')) {
     function __($text, $domain = null)
     {
         return $text;
+    }
+}
+
+if (!function_exists('esc_html__')) {
+    function esc_html__($text, $domain = null)
+    {
+        return $text;
+    }
+}
+
+if (!function_exists('esc_html')) {
+    function esc_html($text)
+    {
+        return (string) $text;
+    }
+}
+
+if (!function_exists('esc_attr')) {
+    function esc_attr($text)
+    {
+        return (string) $text;
+    }
+}
+
+if (!function_exists('wp_kses_post')) {
+    function wp_kses_post($text)
+    {
+        return (string) $text;
+    }
+}
+
+if (!function_exists('wp_strip_all_tags')) {
+    function wp_strip_all_tags($text)
+    {
+        return strip_tags((string) $text);
+    }
+}
+
+if (!function_exists('wp_enqueue_style')) {
+    function wp_enqueue_style($handle)
+    {
+    }
+}
+
+if (!function_exists('get_option')) {
+    function get_option($key)
+    {
+        return match ($key) {
+            'date_format' => 'Y-m-d',
+            'time_format' => 'H:i',
+            default => '',
+        };
+    }
+}
+
+if (!function_exists('wc_price')) {
+    function wc_price($amount, $args = [])
+    {
+        $currency = $args['currency'] ?? 'USD';
+
+        return number_format((float) $amount, 2) . ' ' . $currency;
     }
 }
 
@@ -43,10 +108,16 @@ if (!class_exists('WC_Payment_Gateway')) {
     class WC_Payment_Gateway
     {
         protected array $options = [];
+        protected string $title = 'Payment Gateway Cloud';
 
         public function get_option($key, $emptyValue = null)
         {
             return $this->options[$key] ?? $emptyValue;
+        }
+
+        public function get_title()
+        {
+            return $this->options['title'] ?? $this->title;
         }
     }
 }
@@ -77,7 +148,17 @@ if (!class_exists('WC_Order')) {
             return $this->currency;
         }
 
+        public function get_order_number()
+        {
+            return (string) $this->id;
+        }
+
         public function add_meta_data($key, $value, $unique = false)
+        {
+            $this->meta[$key] = $value;
+        }
+
+        public function update_meta_data($key, $value)
         {
             $this->meta[$key] = $value;
         }
@@ -89,6 +170,26 @@ if (!class_exists('WC_Order')) {
         public function get_meta($key)
         {
             return $this->meta[$key] ?? null;
+        }
+
+        public function get_status()
+        {
+            return $this->paymentCompleted ? 'completed' : 'processing';
+        }
+
+        public function get_date_created()
+        {
+            return new class {
+                public function date_i18n($format)
+                {
+                    return '2026-04-08 09:00';
+                }
+            };
+        }
+
+        public function get_payment_method()
+        {
+            return 'payment_gateway_cloud_creditcard';
         }
 
         public function payment_complete()
@@ -257,3 +358,4 @@ require dirname(__DIR__) . '/src/classes/includes/payment-gateway-cloud-provider
 require dirname(__DIR__) . '/src/classes/includes/payment-gateway-cloud-customer-builder.php';
 require dirname(__DIR__) . '/src/classes/includes/payment-gateway-cloud-transaction-factory.php';
 require dirname(__DIR__) . '/src/classes/includes/payment-gateway-cloud-callback-handler.php';
+require dirname(__DIR__) . '/src/classes/includes/payment-gateway-cloud-receipt-renderer.php';
