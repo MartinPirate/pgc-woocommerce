@@ -44,7 +44,6 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         }, 999);
         add_action('woocommerce_api_wc_' . $this->id, [$this, 'process_callback']);
         add_action('woocommerce_thankyou_' . $this->id, [$this, 'render_receipt'], 20, 1);
-        add_action('woocommerce_email_after_order_table', [$this, 'render_email_receipt'], 20, 4);
         add_filter('script_loader_tag', function ($tag, $handle) {
             if ($handle !== 'payment_js') {
                 return $tag;
@@ -258,19 +257,6 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
         WC_PaymentGatewayCloud_ReceiptRenderer::render($order, $this);
     }
 
-    public function render_email_receipt($order, $sentToAdmin, $plainText, $email)
-    {
-        if ($plainText || $sentToAdmin || !$order instanceof WC_Order) {
-            return;
-        }
-
-        if ($order->get_payment_method() !== $this->id || $this->get_option('receiptEmailEnabled') !== 'yes') {
-            return;
-        }
-
-        echo WC_PaymentGatewayCloud_ReceiptRenderer::renderEmail($order, $this);
-    }
-
     public function init_form_fields()
     {
         $this->form_fields = [
@@ -345,33 +331,6 @@ class WC_PaymentGatewayCloud_CreditCard extends WC_Payment_Gateway
                     'summary' => 'Summary',
                     'ops' => 'Operations',
                 ],
-            ],
-            'receiptEmailEnabled' => [
-                'title' => 'Email Receipt Block',
-                'type' => 'checkbox',
-                'label' => 'Render the IXOPAY receipt block in customer order emails',
-                'default' => 'yes',
-            ],
-            'receiptBrandName' => [
-                'title' => 'Receipt Brand Name',
-                'type' => 'text',
-                'label' => 'Receipt Brand Name',
-                'description' => 'Shown in the receipt header and email receipt block.',
-                'default' => PAYMENT_GATEWAY_CLOUD_EXTENSION_NAME,
-            ],
-            'receiptSupportEmail' => [
-                'title' => 'Receipt Support Email',
-                'type' => 'text',
-                'label' => 'Receipt Support Email',
-                'description' => 'Optional support contact shown on receipt templates.',
-                'default' => '',
-            ],
-            'receiptAccentColor' => [
-                'title' => 'Receipt Accent Color',
-                'type' => 'text',
-                'label' => 'Receipt Accent Color',
-                'description' => 'Hex color for receipt accents, for example #c7ff52.',
-                'default' => '#c7ff52',
             ],
         ];
     }

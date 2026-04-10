@@ -1,5 +1,4 @@
 .payment-gateway-cloud-receipt {
-    --payment-gateway-cloud-accent: #c7ff52;
     margin: 2rem 0;
     padding: 1.5rem;
     border-radius: 24px;
@@ -58,8 +57,8 @@
     align-items: center;
     padding: 0.4rem 0.75rem;
     border-radius: 999px;
-    background: var(--payment-gateway-cloud-accent);
-    color: #0f172a;
+    background: #0f172a;
+    color: #ffffff;
     font-size: 0.8rem;
     font-weight: 600;
 }
@@ -127,11 +126,6 @@
 .payment-gateway-cloud-receipt__tile strong {
     font-size: 1rem;
     line-height: 1.4;
-}
-
-.payment-gateway-cloud-receipt__support-line {
-    margin: 1rem 0 0;
-    color: #475569;
 }
 
 @media (max-width: 768px) {
